@@ -6,4 +6,19 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: app-sample
 spec:
-  # TODO(user): Add fields here
+  image: "nginx:latest"
+  containerPort: 80
+  replicas: 2
+  domains:
+    - "nginx.portra.local"
+  tls: false
+  env:
+    - name: "PORTRA_ENV"
+      value: "production"
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"

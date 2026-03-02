@@ -21,13 +21,16 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	corev1 "github.com/portra-run/portra-operator/api/v1"
+	portrav1 "github.com/portra-run/portra-operator/api/v1"
 )
 
 var _ = Describe("App Controller", func() {
@@ -38,33 +41,37 @@ var _ = Describe("App Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
-		app := &corev1.App{}
+		app := &portrav1.App{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind App")
 			err := k8sClient.Get(ctx, typeNamespacedName, app)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &corev1.App{
+				resource := &portrav1.App{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: portrav1.AppSpec{
+						Image:         "nginx:latest",
+						ContainerPort: 80,
+						Domains:       []string{"test.example.com"},
+						TLS:           true,
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &corev1.App{}
+			resource := &portrav1.App{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance App")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			if err == nil {
+				By("Cleanup the specific resource instance App")
+				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			}
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
@@ -77,8 +84,22 @@ var _ = Describe("App Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			By("Checking if Deployment was created")
+			deployment := &appsv1.Deployment{}
+			Expect(k8sClient.Get(ctx, typeNamespacedName, deployment)).To(Succeed())
+			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("nginx:latest"))
+
+			By("Checking if Service was created")
+			service := &corev1.Service{}
+			Expect(k8sClient.Get(ctx, typeNamespacedName, service)).To(Succeed())
+			Expect(service.Spec.Ports[0].Port).To(Equal(int32(80)))
+
+			By("Checking if Ingress was created")
+			ingress := &networkingv1.Ingress{}
+			Expect(k8sClient.Get(ctx, typeNamespacedName, ingress)).To(Succeed())
+			Expect(ingress.Spec.Rules[0].Host).To(Equal("test.example.com"))
+			Expect(ingress.Annotations["cert-manager.io/cluster-issuer"]).To(Equal("letsencrypt-prod"))
 		})
 	})
 })

@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -30,9 +31,39 @@ type AppSpec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
-	// foo is an example field of App. Edit app_types.go to remove/update
+	// Image is the Docker image to run for this application.
+	// +kubebuilder:validation:Required
+	Image string `json:"image"`
+
+	// ContainerPort is the port that the application listens on.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	// +kubebuilder:default=8080
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	ContainerPort int32 `json:"containerPort,omitempty"`
+
+	// Domains is a list of hostnames to expose the application on.
+	// +optional
+	Domains []string `json:"domains,omitempty"`
+
+	// TLS specifies whether to enable TLS for the specified domains.
+	// +kubebuilder:default=false
+	// +optional
+	TLS bool `json:"tls,omitempty"`
+
+	// Env is a list of environment variables for the application container.
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Replicas is the number of desired instances of the application.
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Resources defines the compute resources required by the application.
+	// +optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // AppStatus defines the observed state of App.

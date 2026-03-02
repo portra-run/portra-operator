@@ -6,6 +6,10 @@ cliVersion: 4.12.0
 domain: portra.run
 layout:
 - go.kubebuilder.io/v4
+plugins:
+  helm.kubebuilder.io/v2-alpha:
+    manifests: dist/install.yaml
+    output: dist
 projectName: portra-operator
 repo: github.com/portra-run/portra-operator
 resources:
